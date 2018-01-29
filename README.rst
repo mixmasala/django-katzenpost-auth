@@ -11,3 +11,7 @@ server
 ------
 ::
   make serve
+
+running hendrix
+---------------
+http://hendrix.readthedocs.io/en/latest/running-hendrix/
