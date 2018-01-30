@@ -36,19 +36,5 @@ def create_or_update_user_idkey(sender, instance, created, **kwargs):
         IDKey.objects.create(user=instance)
         LinkKey.objects.create(user=instance)
     if hasattr(instance, 'idkey'):
-        instance.idkey.save()
-    if hasattr(instance, 'linkkey'):
-        instance.linkkey.save()
-
-#@receiver(post_save, sender=User)
-#def create_user_linkkey(sender, instance, created, **kwargs):
-#    if created:
-#        LinkKey.objects.create(user=instance)
-
-#@receiver(post_save, sender=User)
-#def save_user_idkey(sender, instance, **kwargs):
-#    instance.linkkey.save()
-
-#@receiver(post_save, sender=User)
-#def save_user_linkkey(sender, instance, **kwargs):
-#    instance.idkey.save()
+        if len(instance.idkey.key) != 0:
+            instance.idkey.save()
