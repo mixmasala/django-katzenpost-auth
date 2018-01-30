@@ -3,12 +3,20 @@ import json
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 
+def success(action, result=True):
+    return json.dumps({action: result})
+
+
+def failure(action, request, message="", code=401):
+    request.setResponseCode(code)
+    return json.dumps({action: False, 'message': message})
+
 
 def check_args(request, key):
     if key not in request.args:
-        request.setResponseCode(400)
         return False
     return True
+
 
 def get_arg(request, key):
     return request.args.get(key)[0]
@@ -34,14 +42,16 @@ class Command(Resource):
 
 class AddUserCommand(Command):
 
+    action = 'adduser'
+
     def render_POST(self, request):
         print "ADDUSER", request.args
         if not check_args(request, 'username'):
-            return 'bad request: empty username'
+            return failure(self.action, request, 'bad request: empty username', 400)
         if not check_args(request, 'idkey'):
-            return 'bad request: empty idkey'
+            return failure(self.action, request, 'bad request: empty idkey', 400)
         if not check_args(request, 'linkkey'):
-            return 'bad request: empty linkkey'
+            return failure(self.action, request, 'bad request: empty linkkey', 400)
 
         username = get_arg(request, 'username')
         idkey = get_arg(request, 'idkey')
@@ -52,33 +62,51 @@ class AddUserCommand(Command):
         except Exception as exc:
             request.setResponseCode(500)
             return 'error: %r' % exc
-        return 'ok'
+        return success(self.action)
 
 
 class GetIDKeyCommand(Command):
 
+    action = 'getidkey'
+
     def render_POST(self, request):
         if not check_args(request, 'username'):
-            return 'bad request: empty username'
+            return failure(self.actoin, request, 'bad request: empty username', 400)
         username = get_arg('username')
-        idkey = self.backend.get_idkey(username)
-        response = {'key': idkey}
-        return json.dumps(response)
+        result = self.backend.get_idkey(username)
+        return success(self.action, result)
 
 
 class IsValidCommand(Command):
 
+    action = 'exists'
+
     def render_POST(self, request):
         if not check_args(request, 'linkkey'):
-            return 'bad request: empty linkkey'
+            return failure(self.action, request, 'bad request: empty linkkey', 400)
         if not check_args(request, 'username'):
-            return 'bad request: empty username'
+            return failure(self.action, request, 'bad request: empty username', 400)
+
         username = get_arg(request, 'username')
         linkkey = get_arg(request, 'linkkey')
 
-        idkey = self.backend.is_valid(linkkey, username)
-        response = {'isvalid': idkey}
-        return json.dumps(response)
+        result = self.backend.is_valid(linkkey, username)
+        return success(self.action, result)
+
+
+class ExistsCommand(Command):
+
+    action = 'exists'
+
+    def render_POST(self, request):
+        if not check_args(request, 'username'):
+            return failure(self.action, request, 'bad request: empty username', 400)
+
+        username = get_arg(request, 'username')
+        linkkey = get_arg(request, 'linkkey')
+
+        result = self.backend.exists(linkkey, username)
+        return success(action, result)
 
 # TODO Pluggable django backend ----------------------
 
@@ -87,10 +115,15 @@ from katzen.models import User, IDKey, LinkKey
 
 class DjangoBackend():
 
-    def __init__(self):
+    def __init__(self, root):
+        self.root = root
+
         self.users = User.objects
         self.ikeys = IDKey.objects
         self.lkeys = LinkKey.objects
+
+    def addCommand(self, endpoint, command):
+        self.root.putChild(endpoint, command(self))
 
     def new(self, username, idkey, linkkey):
         user = self.users.create(username=username)
@@ -120,9 +153,11 @@ def getSite():
     root = Command(None)
     root.isLeaf = False
     
-    backend = DjangoBackend()
-    root.putChild('adduser', AddUserCommand(backend))
-    root.putChild('getidkey', GetIDKeyCommand(backend))
-    root.putChild('isvalid', IsValidCommand(backend))
+    backend = DjangoBackend(root)
+    backend.addCommand('adduser', AddUserCommand)
+    backend.addCommand('getidkey', GetIDKeyCommand)
+    backend.addCommand('isvalid', IsValidCommand)
+    backend.addCommand('exists', ExistsCommand)
+
     site = Site(root)
     return site
