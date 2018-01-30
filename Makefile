@@ -1,5 +1,6 @@
 serve:
-	cd katzenauth && hx start --dev
+	#cd katzenauth && hx start --dev
+	cd katzenauth && ./run.py
 collect:
 	cd katzenauth && ./manage.py collectstatic
 init:
