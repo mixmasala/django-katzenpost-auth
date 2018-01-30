@@ -1,16 +1,26 @@
+import json
 
 from twisted.web.resource import Resource
 from twisted.web.server import Site
+
+
+def check_args(request, key):
+    if key not in request.args:
+        request.setResponseCode(400)
+        return False
+    return True
+
+def get_arg(request, key):
+    return request.args.get(key)[0]
 
 
 class Command(Resource):
 
     isLeaf = True
 
-    def __init__(self, store):
-        self.store = store
+    def __init__(self, backend):
+        self.backend = backend
         Resource.__init__(self)
-
 
     def getChild(self, name, request):
         if name == '':
@@ -25,38 +35,53 @@ class Command(Resource):
 class AddUserCommand(Command):
 
     def render_POST(self, request):
-        keys = request.args
-        print "ADDUSER", keys
-        if 'username' not in keys:
-            request.setResponseCode(400)
+        print "ADDUSER", request.args
+        if not check_args(request, 'username'):
             return 'bad request: empty username'
-        if 'idkey' not in keys:
-            request.setResponseCode(400)
+        if not check_args(request, 'idkey'):
             return 'bad request: empty idkey'
-        if 'linkkey' not in keys:
-            request.setResponseCode(400)
+        if not check_args(request, 'linkkey'):
             return 'bad request: empty linkkey'
 
-        username = keys.get('username')[0]
-        idkey = keys.get('idkey')[0]
-        linkkey = keys.get('linkkey')[0]
+        username = get_arg(request, 'username')
+        idkey = get_arg(request, 'idkey')
+        linkkey = get_arg(request, 'linkkey')
 
         try:
-            self.store.new(username, idkey, linkkey)
+            self.backend.new(username, idkey, linkkey)
         except Exception as exc:
             request.setResponseCode(500)
             return 'error: %r' % exc
         return 'ok'
 
 
-class GetKeyCommand(Command):
+class GetIDKeyCommand(Command):
 
     def render_POST(self, request):
-        print "POST REQUEST", request
-        return 'ok'
+        if not check_args(request, 'username'):
+            return 'bad request: empty username'
+        username = get_arg('username')
+        idkey = self.backend.get_idkey(username)
+        response = {'key': idkey}
+        return json.dumps(response)
 
 
-# TODO this should be pluggable
+class IsValidCommand(Command):
+
+    def render_POST(self, request):
+        if not check_args(request, 'linkkey'):
+            return 'bad request: empty linkkey'
+        if not check_args(request, 'username'):
+            return 'bad request: empty username'
+        username = get_arg(request, 'username')
+        linkkey = get_arg(request, 'linkkey')
+
+        idkey = self.backend.is_valid(linkkey, username)
+        response = {'isvalid': idkey}
+        return json.dumps(response)
+
+# TODO Pluggable django backend ----------------------
+
 from katzen.models import User, IDKey, LinkKey
 
 
@@ -75,6 +100,21 @@ class DjangoBackend():
         lkey.key = linkkey
         lkey.save()
 
+    def get_idkey(self, username):
+        user = self.users.get(username=username)
+        return user.idkey.key
+
+    def is_valid(self, link_key, username):
+        user = self.users.get(username=username)
+        link_keys = [lk.key for lk in user.linkkey_set.all()]
+        return link_key in link_keys
+
+    def exists(self, username):
+        return self.users.filter(username=username).count() != 0
+
+# ----------------------------------------------------------------
+
+
 
 def getSite():
     root = Command(None)
@@ -82,6 +122,7 @@ def getSite():
     
     backend = DjangoBackend()
     root.putChild('adduser', AddUserCommand(backend))
-    root.putChild('getkey', GetKeyCommand(backend))
+    root.putChild('getidkey', GetIDKeyCommand(backend))
+    root.putChild('isvalid', IsValidCommand(backend))
     site = Site(root)
     return site
