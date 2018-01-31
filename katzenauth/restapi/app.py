@@ -19,7 +19,10 @@ def check_args(request, key):
 
 
 def get_arg(request, key):
-    return request.args.get(key)[0]
+    try:
+        return request.args.get(key)[0]
+    except Exception:
+        return None
 
 
 class Command(Resource):
@@ -79,16 +82,17 @@ class GetIDKeyCommand(Command):
 
 class IsValidCommand(Command):
 
-    action = 'exists'
+    action = 'isvalid'
 
     def render_POST(self, request):
-        if not check_args(request, 'linkkey'):
-            return failure(self.action, request, 'bad request: empty linkkey', 400)
-        if not check_args(request, 'username'):
-            return failure(self.action, request, 'bad request: empty username', 400)
+        print('POST isvalid/', request.args)
+        if not check_args(request, 'key'):
+            return failure(self.action, request, 'bad request: empty key', 400)
+        if not check_args(request, 'user'):
+            return failure(self.action, request, 'bad request: empty user', 400)
 
-        username = get_arg(request, 'username')
-        linkkey = get_arg(request, 'linkkey')
+        username = get_arg(request, 'user')
+        linkkey = get_arg(request, 'key')
 
         result = self.backend.is_valid(linkkey, username)
         return success(self.action, result)
@@ -99,14 +103,12 @@ class ExistsCommand(Command):
     action = 'exists'
 
     def render_POST(self, request):
-        if not check_args(request, 'username'):
-            return failure(self.action, request, 'bad request: empty username', 400)
+        if not check_args(request, 'user'):
+            return failure(self.action, request, 'bad request: empty user', 400)
 
-        username = get_arg(request, 'username')
-        linkkey = get_arg(request, 'linkkey')
-
-        result = self.backend.exists(linkkey, username)
-        return success(action, result)
+        username = get_arg(request, 'user')
+        result = self.backend.exists(username)
+        return success(self.action, result)
 
 # TODO Pluggable django backend ----------------------
 
@@ -139,8 +141,11 @@ class DjangoBackend():
 
     def is_valid(self, link_key, username):
         user = self.users.get(username=username)
-        link_keys = [lk.key for lk in user.linkkey_set.all()]
-        return link_key in link_keys
+        link_keys = [lk.key.lower() for lk in user.linkkey_set.all()]
+        result = link_key.lower() in link_keys
+        print("VALID?", link_key, username, result)
+        return result
+
 
     def exists(self, username):
         return self.users.filter(username=username).count() != 0
