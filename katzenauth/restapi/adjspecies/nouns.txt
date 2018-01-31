@@ -1,0 +1,11 @@
+wing
+entropy
+noise
+oscilloscope
+antenna
+coil
+resistor
+bubble
+currency
+agent
+cop

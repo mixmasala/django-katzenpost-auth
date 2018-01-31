@@ -3,6 +3,9 @@ import json
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 
+from adjspecies import random_adjspecies
+
+
 def success(action, result=True):
     return json.dumps({action: result})
 
@@ -40,7 +43,7 @@ class Command(Resource):
 
     def render_GET(self, request):
 	print "GET", request.path
-        return "Katzenpost Key Management. Please POST to: adduser, getkey"
+        return "Katzenpost Key Management. You can POST to: register, adduser, isvalid, exists, getidkey"
 
 
 class AddUserCommand(Command):
@@ -66,6 +69,29 @@ class AddUserCommand(Command):
             request.setResponseCode(500)
             return 'error: %r' % exc
         return success(self.action)
+
+
+class RegisterCommand(Command):
+
+    action = 'register'
+
+    def render_POST(self, request):
+        if not check_args(request, 'idkey'):
+            return failure(self.action, request, 'bad request: empty idkey', 400)
+        if not check_args(request, 'linkkey'):
+            return failure(self.action, request, 'bad request: empty linkkey', 400)
+
+        idkey = get_arg(request, 'idkey')
+        linkkey = get_arg(request, 'linkkey')
+
+        username = random_adjspecies()
+        try:
+            self.backend.new(username, idkey, linkkey)
+        except Exception as exc:
+            request.setResponseCode(500)
+            return failure(self.action, request, 'error: %r' % exc, 500)
+        return success(self.action, username)
+
 
 
 class GetIDKeyCommand(Command):
@@ -163,6 +189,7 @@ def getSite():
     backend.addCommand('getidkey', GetIDKeyCommand)
     backend.addCommand('isvalid', IsValidCommand)
     backend.addCommand('exists', ExistsCommand)
+    backend.addCommand('register', RegisterCommand)
 
     site = Site(root)
     return site
