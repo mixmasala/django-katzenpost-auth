@@ -13,3 +13,10 @@ destroydb:
 createadmin:
 	cd katzenauth && ./manage.py createsuperuser
 startfresh: destroydb migrations createadmin
+
+pythondeps:
+	apt install virtualenv python2.7-dev
+	virtualenv venv
+
+environ:
+	./bootstrap
