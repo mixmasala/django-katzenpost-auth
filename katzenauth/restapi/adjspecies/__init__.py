@@ -6,7 +6,7 @@ Print the name of a random adjective/species, more or less…
 import argparse
 from itertools import chain
 from os import path
-from random import choice
+from random import choice, randint
 import sys
 
 
@@ -74,8 +74,11 @@ def random_adjspecies_pair(maxlen=None, prevent_stutter=True):
             continue
         return pair
 
+def camelify(word):
+    return word[0].upper() + word[1:]
 
-def random_adjspecies(sep='', maxlen=20, prevent_stutter=True):
+
+def random_adjspecies(sep='', maxlen=20, prevent_stutter=True, numbers=True):
     """
     Return a random adjective/species, separated by `sep`. The keyword
     arguments `maxlen` and `prevent_stutter` are the same as for
@@ -83,7 +86,12 @@ def random_adjspecies(sep='', maxlen=20, prevent_stutter=True):
     not affected by the separator.
     """
     pair = random_adjspecies_pair(maxlen, prevent_stutter)
-    return pair[0] + sep + pair[1]
+    first = camelify(pair[0])
+    second = camelify(pair[1])
+    words = first + sep + second
+    if numbers:
+        words += str(randint(0, 99))
+    return words
 
 
 def main(*argv):

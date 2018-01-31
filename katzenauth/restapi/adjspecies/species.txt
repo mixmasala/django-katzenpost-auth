@@ -40,3 +40,5 @@ falcon
 sparrow
 snake
 viper
+manatee
+lemmon

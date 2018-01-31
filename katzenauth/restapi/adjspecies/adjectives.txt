@@ -58,3 +58,16 @@ brave
 calmed
 crazy
 paranoid
+autistic
+incredible
+enchanted
+terrified
+greedy
+infatuated
+questionable
+reasonable
+unrealistic
+weird
+undocumented
+undefined
+indolent
