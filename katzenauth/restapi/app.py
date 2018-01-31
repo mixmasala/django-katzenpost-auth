@@ -1,5 +1,7 @@
+import datetime
 import json
 
+from twisted.internet import task
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 
@@ -143,12 +145,20 @@ from katzen.models import User, IDKey, LinkKey
 
 class DjangoBackend():
 
+    ACCOUNT_LIFETIME_SEC = 60 * 60 * 24 * 7
+    EXPIRY_CHECK_SEC = 60 * 60
+
     def __init__(self, root):
         self.root = root
 
         self.users = User.objects
         self.ikeys = IDKey.objects
         self.lkeys = LinkKey.objects
+
+    def expireAccounts(self):
+        cutoff = datetime.datetime.now() - datetime.timedelta(0, self.ACCOUNT_LIFETIME_SEC)
+        print('>>> Expiring accounts older than: %s' % cutoff)
+        self.users.filter(date_joined__lt=cutoff, is_staff=False).delete()
 
     def addCommand(self, endpoint, command):
         self.root.putChild(endpoint, command(self))
@@ -192,4 +202,5 @@ def getSite():
     backend.addCommand('register', RegisterCommand)
 
     site = Site(root)
+    site.backend = backend
     return site
