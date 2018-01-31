@@ -1,11 +1,39 @@
 import datetime
+import hmac
+import hashlib
 import json
+import time
 
 from twisted.internet import task
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 
 from adjspecies import random_adjspecies
+
+
+try:
+    from local_settings import SECRET
+except ImportError:
+    # TODO get from django backend config
+    SECRET = 'changethisinproduction'
+
+REGISTRATION_HELP = """
+<p>POST params: idkey, linkkey, [pre|token,hmac]
+
+<pre>curl -X POST -d "idkey=deadbeef&linkkey=deadbeef" http://provider:7900/register</pre>
+
+<p>You can also pass the "pre" parameter, so that the server suggests you an username, together with a verification hmac:</p>
+<pre>curl -X POST -d "pre=1" localhost:7900/register</pre>
+<pre>{"register": ["1517439761:calmedsheep", "27acbbe37e891186d3be7a28887904ba5656b927"]}</pre>
+<p>If you like that suggested username, you can proceed with the registration:</p>
+<pre>curl -X POST -d "token=1517439761:calmedsheep&hmac=27acbbe37e891186d3be7a28887904ba5656b927&idkey=deadbeef&linkkey=deadbeef" localhost:7900/register</pre>
+<pre>{"register": "calmedsheep"}</pre>
+"""
+
+
+def make_digest(message):
+    return hmac.new(SECRET, message, hashlib.sha1).hexdigest()
+
 
 
 def success(action, result=True):
@@ -77,19 +105,52 @@ class RegisterCommand(Command):
 
     action = 'register'
 
+    def render_GET(sef, request):
+        return REGISTRATION_HELP
+
     def render_POST(self, request):
+        pre = get_arg(request, 'pre')
+        SEP = ":"
+
+        if pre:
+            username = random_adjspecies()
+            token = str(int(time.time())) + SEP + username
+            hmac_token = make_digest(token)
+            return success(self.action, (token, hmac_token))
+
+        token = get_arg(request, 'token')
+        if token:
+            print "TOKEN>>", token
+            if not check_args(request, 'hmac'):
+                return failure(self.action, request, 'bad request: empty hmac', 400)
+            received_hmac = get_arg(request, 'hmac')
+            ts, claimed_username = token.split(SEP)
+
+            if ts < time.time() - 60 * 5:
+                return failure(self.action, request, 'bad request: expired token', 400)
+
+            expected = make_digest(token)
+            if not hmac.compare_digest(received_hmac, expected):
+                return failure(self.action, request, 'bad request: corrupted hmac', 400)
+            username = claimed_username
+            
+
         if not check_args(request, 'idkey'):
             return failure(self.action, request, 'bad request: empty idkey', 400)
         if not check_args(request, 'linkkey'):
             return failure(self.action, request, 'bad request: empty linkkey', 400)
 
+
         idkey = get_arg(request, 'idkey')
         linkkey = get_arg(request, 'linkkey')
 
-        username = random_adjspecies()
+        if not username:
+            username = random_adjspecies()
+
         try:
             self.backend.new(username, idkey, linkkey)
         except Exception as exc:
+            # XXX have retries here
             request.setResponseCode(500)
             return failure(self.action, request, 'error: %r' % exc, 500)
         return success(self.action, username)
