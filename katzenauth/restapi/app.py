@@ -111,6 +111,7 @@ class RegisterCommand(Command):
     def render_POST(self, request):
         pre = get_arg(request, 'pre')
         SEP = ":"
+        username = None
 
         if pre:
             username = random_adjspecies()
