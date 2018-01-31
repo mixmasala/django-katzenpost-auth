@@ -129,3 +129,8 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 STATIC_ROOT = '/opt/katzenauth/static'
+
+try:
+    import local_settings
+except Exception:
+    pass
