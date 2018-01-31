@@ -207,7 +207,9 @@ from katzen.models import User, IDKey, LinkKey
 
 class DjangoBackend():
 
-    ACCOUNT_LIFETIME_SEC = 60 * 60 * 24 * 7
+    # expire every day
+    ACCOUNT_LIFETIME_SEC = 60 * 60 * 24 * 1
+    # check every hour
     EXPIRY_CHECK_SEC = 60 * 60
 
     def __init__(self, root):
