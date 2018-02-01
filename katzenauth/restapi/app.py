@@ -246,7 +246,8 @@ class DjangoBackend():
         try:
             user = self.users.get(username=username)
         except User.DoesNotExist:
-            return failure(self.action, request, 'bad request: username does not exist: %s' % username, 400)
+            print("USER DOES NOT EXIST: %s" % username)
+            return False
         link_keys = [lk.key.lower() for lk in user.linkkey_set.all()]
         result = link_key.lower() in link_keys
         print("VALID?", link_key, username, result)
