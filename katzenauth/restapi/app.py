@@ -151,7 +151,7 @@ class RegisterCommand(Command):
             username = random_adjspecies()
 
         try:
-            self.backend.new(username, idkey, linkkey)
+            self.backend.new(username.lower(), idkey, linkkey)
         except Exception as exc:
             # XXX have retries here
             request.setResponseCode(500)
