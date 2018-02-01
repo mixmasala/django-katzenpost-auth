@@ -4,6 +4,7 @@ import hashlib
 import json
 import time
 
+
 from twisted.internet import task
 from twisted.web.resource import Resource
 from twisted.web.server import Site
@@ -204,6 +205,7 @@ class ExistsCommand(Command):
 # TODO Pluggable django backend ----------------------
 
 from katzen.models import User, IDKey, LinkKey
+from django.contrib.auth.models import User
 
 
 class DjangoBackend():
@@ -241,7 +243,10 @@ class DjangoBackend():
         return user.idkey.key
 
     def is_valid(self, link_key, username):
-        user = self.users.get(username=username)
+        try:
+            user = self.users.get(username=username)
+        except User.DoesNotExist:
+            return failure(self.action, request, 'bad request: username does not exist: %s' % username, 400)
         link_keys = [lk.key.lower() for lk in user.linkkey_set.all()]
         result = link_key.lower() in link_keys
         print("VALID?", link_key, username, result)
