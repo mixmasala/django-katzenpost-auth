@@ -27,6 +27,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+AUTHENTICATION_BACKENDS = ('katzen.backends.CaseInsensitiveModelBackend', )
+
 
 # Application definition
 
