@@ -24,16 +24,15 @@ REGISTRATION_HELP = """
 
 <p>You can also pass the "pre" parameter, so that the server suggests you an username, together with a verification hmac:</p>
 <pre>curl -X POST -d "pre=1" localhost:7900/register</pre>
-<pre>{"username": "CalmedSheep02", "token": "1517439761:calmedsheep", "hmac": "27acbbe37e891186d3be7a28887904ba5656b927"}</pre>
+<pre>{"username": "CalmedSheep02", "token": "1517439761:CalmedSheep02:27acbbe37e891186d3be7a28887904ba5656b927"}</pre>
 <p>If you like that suggested username, you can proceed with the registration:</p>
-<pre>curl -X POST -d "token=1517439761:CalmedSheep22&hmac=27acbbe37e891186d3be7a28887904ba5656b927&idkey=deadbeef&linkkey=deadbeef" localhost:7900/register</pre>
+<pre>curl -X POST -d "token=1517439761:CalmedSheep22:27acbbe37e891186d3be7a28887904ba5656b927&idkey=deadbeef&linkkey=deadbeef" localhost:7900/register</pre>
 <pre>{"register": "CalmedSheep22"}</pre>
 """
 
 
 def make_digest(message):
     return hmac.new(SECRET, message, hashlib.sha1).hexdigest()
-
 
 
 def success(action, result=True):
@@ -119,21 +118,20 @@ class RegisterCommand(Command):
             hmac_token = make_digest(token)
             return json.dumps(
                 {'username': username,
-                 'token': token,
-                 'hmac': hmac_token})
+                 'token': token + ':' + hmac_token})
 
         token = get_arg(request, 'token')
         if token:
             print "TOKEN>>", token
-            if not check_args(request, 'hmac'):
-                return failure(self.action, request, 'bad request: empty hmac', 400)
-            received_hmac = get_arg(request, 'hmac')
-            ts, claimed_username = token.split(SEP)
+            try:
+                ts, claimed_username, received_hmac = token.split(SEP)
+            except ValueError:
+                return failure(self.action, request, 'bad request: expected token as ts:username:hmac', 400)
 
             if ts < time.time() - 60 * 5:
                 return failure(self.action, request, 'bad request: expired token', 400)
 
-            expected = make_digest(token)
+            expected = make_digest('%s:%s' % (ts, claimed_username))
             if not hmac.compare_digest(received_hmac, expected):
                 return failure(self.action, request, 'bad request: corrupted hmac', 400)
             username = claimed_username
