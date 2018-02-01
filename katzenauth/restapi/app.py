@@ -135,7 +135,7 @@ class RegisterCommand(Command):
             expected = make_digest('%s:%s' % (ts, claimed_username))
             if not hmac.compare_digest(received_hmac, expected):
                 return failure(self.action, request, 'bad request: corrupted hmac', 400)
-            username = claimed_username
+            username = claimed_username.lower()
             
 
         if not check_args(request, 'idkey'):
