@@ -24,10 +24,10 @@ REGISTRATION_HELP = """
 
 <p>You can also pass the "pre" parameter, so that the server suggests you an username, together with a verification hmac:</p>
 <pre>curl -X POST -d "pre=1" localhost:7900/register</pre>
-<pre>{"register": ["1517439761:calmedsheep", "27acbbe37e891186d3be7a28887904ba5656b927"]}</pre>
+<pre>{"username": "CalmedSheep02", "token": "1517439761:calmedsheep", "hmac": "27acbbe37e891186d3be7a28887904ba5656b927"}</pre>
 <p>If you like that suggested username, you can proceed with the registration:</p>
-<pre>curl -X POST -d "token=1517439761:calmedsheep&hmac=27acbbe37e891186d3be7a28887904ba5656b927&idkey=deadbeef&linkkey=deadbeef" localhost:7900/register</pre>
-<pre>{"register": "calmedsheep"}</pre>
+<pre>curl -X POST -d "token=1517439761:CalmedSheep22&hmac=27acbbe37e891186d3be7a28887904ba5656b927&idkey=deadbeef&linkkey=deadbeef" localhost:7900/register</pre>
+<pre>{"register": "CalmedSheep22"}</pre>
 """
 
 
@@ -117,7 +117,10 @@ class RegisterCommand(Command):
             username = random_adjspecies()
             token = str(int(time.time())) + SEP + username
             hmac_token = make_digest(token)
-            return success(self.action, (token, hmac_token))
+            return json.dumps(
+                {'username': username,
+                 'token': token,
+                 'hmac': hmac_token})
 
         token = get_arg(request, 'token')
         if token:
