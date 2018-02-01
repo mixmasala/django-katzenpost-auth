@@ -164,9 +164,9 @@ class GetIDKeyCommand(Command):
     action = 'getidkey'
 
     def render_POST(self, request):
-        if not check_args(request, 'username'):
-            return failure(self.actoin, request, 'bad request: empty username', 400)
-        username = get_arg('username')
+        if not check_args(request, 'user'):
+            return failure(self.action, request, 'bad request: empty user', 400)
+        username = get_arg('user')
         result = self.backend.get_idkey(username)
         return success(self.action, result)
 
