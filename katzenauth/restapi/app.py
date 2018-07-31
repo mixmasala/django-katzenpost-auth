@@ -4,7 +4,9 @@ import hashlib
 import json
 import time
 
-
+from base64 import b64decode
+from binascii import b2a_hex
+from re import match
 from twisted.internet import task
 from twisted.web.resource import Resource
 from twisted.web.server import Site
@@ -146,6 +148,16 @@ class RegisterCommand(Command):
 
         idkey = get_arg(request, 'idkey')
         linkkey = get_arg(request, 'linkkey')
+
+        # verify linkkey and idkey
+        for k in [idkey, linkkey]:
+            if len(k) == 64 && match('^[A-Za-z0-9]+$', k):
+                break
+            if k.endswith('='):
+                try:
+                    k = b2a_hex(b64decode(k))
+                except TypeError:
+                    return failure(self.action, request, 'bad request: invalid key format', 400)
 
         if not username:
             username = random_adjspecies()
